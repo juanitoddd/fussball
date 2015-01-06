@@ -76,9 +76,12 @@ _.extend(T, {
         this.teams.fetch({
             //reset: true,
             success: function(){
+                T.alert('Success');
                 T.container.html(T.teams_tpl({teams:T.teams.models}));
             },
-            error: function(){
+            error: function(msg){
+                console.log(T);
+                T.alert('Error: ' + msg);
                 console.log('Error');
             }
         });
@@ -87,6 +90,10 @@ _.extend(T, {
     // Start backbone router and history
     start: function() {
         Backbone.history.start();
+    },
+
+    alert: function(message) {
+        $('#debug').html(message);
     },
 
     // Replaces console.log
