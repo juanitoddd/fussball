@@ -1,11 +1,44 @@
+/*
+var oldBackboneSync = Backbone.sync;
+Backbone.sync = function(method, model, options) {
+    options || (options = {});
+    if (!options.crossDomain) {
+        options.crossDomain = true;
+    }
+
+    if (!options.xhrFields) {
+        options.xhrFields = {withCredentials:true};
+    }
+    return oldBackboneSync.apply(this, [method, model, options]);
+};
+*/
+_.extend(Backbone.Validation.callbacks, {
+    valid: function (view, attr, selector) {
+        var $el = view.$('[name=' + attr + ']'),
+            $group = $el.closest('.form-group');
+
+        $group.removeClass('has-error');
+        $group.find('.help-block').html('').addClass('hidden');
+    },
+    invalid: function (view, attr, error, selector) {
+        var $el = view.$('[name=' + attr + ']'),
+            $group = $el.closest('.form-group');
+
+        $group.addClass('has-error');
+        $group.find('.help-block').html(error).removeClass('hidden');
+    }
+});
+
 var T = window.T || {};
 _.extend(T, {
     // Top level view that is currently initialized and displayed.
     activeMainView: null,
     config: {},
 
-    API: 'http://api.fussball.ecuation.com',
+    //API: 'http://api.fussball.ecuation.com',
+    API: 'http://api.fussball',
 
+    auth : false,
     // Initialize collections and main classes
     initialize: function() {
 
@@ -22,8 +55,6 @@ _.extend(T, {
         this.login_tpl = _.template(
             $( "script#login-tpl" ).html()
         );
-
-        // User login
 
         // Create main collections, bootstrapped in the html view
         this.teams = new T.Collections.Teams();
@@ -54,22 +85,58 @@ _.extend(T, {
         }else
             this.login();
 
+
+
     },
 
     login: function(){
+
         this.container.html(this.login_tpl());
+
+        this.view = Backbone.View.extend({
+            events: {
+                'click #RegisterSubmit': function (e) {
+                    e.preventDefault();
+                    this.signUp();
+                }
+            },
+            initialize: function () {
+                // This hooks up the validation
+                // See: http://thedersen.com/projects/backbone-validation/#using-form-model-validation/validation-binding
+                Backbone.Validation.bind(this);
+            },
+            signUp: function () {
+                var data = this.$el.serializeObject();
+                this.model.set(data);
+                // Check if the model is valid before saving
+                // See: http://thedersen.com/projects/backbone-validation/#methods/isvalid
+                if(this.model.isValid(true)){
+                    this.model.save(null, function(data){
+                        if(data){ //  Saved
+                            T.auth = new T.Models.User(data.User);
+                            T.dashboard();
+                        }
+                    });
+                }//else
+                    //console.log('Not Valid');
+            },
+
+            remove: function() {
+                // Remove the validation binding
+                // See: http://thedersen.com/projects/backbone-validation/#using-form-model-validation/unbinding
+                Backbone.Validation.unbind(this);
+                return Backbone.View.prototype.remove.apply(this, arguments);
+            }
+        });
+
+        var view = new this.view({
+            el: '#FormRegister',
+            model: new T.Models.User()
+        });
     },
 
     dashboard: function(){
-        this.matches.fetch({
-            //reset: true,
-            success: function(){
-                T.container.html(T.dashboard_tpl({matches:T.matches.models}));
-            },
-            error: function(){
-                console.log('Error');
-            }
-        });
+        T.container.html(T.dashboard_tpl({auth:T.auth, api: T.API}));
     },
 
     teams_view: function(){
@@ -77,7 +144,7 @@ _.extend(T, {
             //reset: true,
             success: function(){
                 T.alert('Success');
-                T.container.html(T.teams_tpl({teams:T.teams.models}));
+                T.container.html(T.teams_tpl({teams:T.teams.models, api: T.API}));
             },
             error: function(msg){
                 console.log(T);
@@ -117,13 +184,13 @@ _.extend(T, {
                 return decodeURIComponent(pair[1]);
             }
         }
-    }
+    },
 });
 
 // Namespacing
 _.extend(T, {
     User : {
-        logged : true //Temp
+        logged : false //Temp
     },
     Options: {},
     Routers: {},
@@ -131,3 +198,12 @@ _.extend(T, {
     Models: {},
     Collections: {}
 });
+
+$.fn.serializeObject = function () {
+    "use strict";
+    var a = {}, b = function (b, c) {
+        var d = a[c.name];
+        "undefined" != typeof d && d !== null ? $.isArray(d) ? d.push(c.value) : a[c.name] = [d, c.value] : a[c.name] = c.value
+    };
+    return $.each(this.serializeArray(), b), a
+};
