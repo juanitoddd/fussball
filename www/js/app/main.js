@@ -35,8 +35,8 @@ _.extend(T, {
     activeMainView: null,
     config: {},
 
-    //API: 'http://api.fussball.ecuation.com',
-    API: 'http://api.fussball',
+    API: 'http://api.fussball.ecuation.com',
+    //API: 'http://api.fussball',
 
     auth : false,
     // Initialize collections and main classes
